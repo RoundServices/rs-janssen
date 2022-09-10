@@ -20,7 +20,7 @@ class ConfigAPIClient:
         self.logger = logger
         self.properties = local_properties
         self.base_uri = 'https://{}'.format(self.properties.get('idp_hostname'))
-        self.oidc_client = OIDCClient(self.base_uri, logger)
+        self.oidc_client = OIDCClient(self.base_uri, logger, verify=False)
 
     def _execute_with_json_response(self, operation, endpoint, scopes, json_obj={}):
         self.logger.debug('{} {}', operation, endpoint)
