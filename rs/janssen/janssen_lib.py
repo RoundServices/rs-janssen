@@ -9,6 +9,7 @@
 import json
 import requests
 import os
+import shutil
 from rs.utils.clients import OIDCClient
 from rs.utils import http
 from pathlib import Path
@@ -21,6 +22,9 @@ class ConfigAPIClient:
         self.properties = local_properties
         self.base_uri = 'https://{}'.format(self.properties.get('idp_hostname'))
         self.oidc_client = OIDCClient(self.base_uri, logger, verify=False)
+        self.temp_dir = './work'
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        os.mkdir(self.temp_dir, 0o666)
 
     def _execute_with_json_response(self, operation, endpoint, scopes, json_obj={}):
         self.logger.debug('{} {}', operation, endpoint)
@@ -54,12 +58,15 @@ class ConfigAPIClient:
         for directory_entry in sorted(os.scandir(objects_folder), key=lambda path: path.name):
             file_path = directory_entry.path
             if directory_entry.is_file() and file_path.endswith(extension):
-                files.append(file_path)
+                file_name = Path(file_path).stem
+                temp_file = '{}/{}'.format(self.temp_dir,os.path.basename(file_name))
+                shutil.copyfile(file_path, temp_file)
+                self.local_properties.replace(temp_file)
+                files.append(temp_file)
         return files
 
     def _load_json(self, json_file):
         json_data = json.load(json_file)
-        json_data = self.properties.replace_dict(json_data)
         self.logger.trace('JSON definition: {}', json_data)
         return json_data
 
