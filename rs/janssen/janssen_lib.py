@@ -40,9 +40,10 @@ class ConfigAPIClient:
         acc_token = self.oidc_client.request_to_token_endpoint(b64_creds, params).get('access_token')
         self.logger.trace('acc_token is {}', acc_token)
         self.logger.trace('setting headers for operation')
+        content_type = 'application/json' if operation != 'PATCH' else 'application/json-patch+json'
         headers = {
             'Authorization': 'Bearer {}'.format(acc_token),
-            'Content-Type': 'application/json'
+            'Content-Type': content_type
         }
         self.logger.trace('request body - dump json_obj')
         body = json.dumps(json_obj)
