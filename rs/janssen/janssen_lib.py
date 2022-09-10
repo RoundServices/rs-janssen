@@ -51,7 +51,8 @@ class ConfigAPIClient:
         response = requests.request(operation, url, headers=headers, data=body, verify=False)
         http.validate_response(response, self.logger, 'Execute Failed - HTTP Code: {}'.format(response.status_code))
         json_obj = {} if operation == 'DELETE' else response.json()
-        self.logger.debug('{} JSON response - {}', operation, json_obj)
+        if operation != 'GET' and endpoint != '/jans-config-api/api/v1/attributes':
+            self.logger.debug('{} JSON response - {}', operation, json_obj)
         return json_obj
 
     def _get_files_path(self, objects_folder, extension='.json'):
