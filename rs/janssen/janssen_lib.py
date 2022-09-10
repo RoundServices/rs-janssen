@@ -123,11 +123,20 @@ class ConfigAPIClient:
                 if jans_obj != {}:
                     self.logger.debug('PUT obj {}', inum)
                     jans_obj.update(json_data)
+                    self._clean_json(jans_obj)
                     self.logger.debug("json obj is: {}", jans_obj)
                     self._execute_with_json_response('PUT', endpoint, scopes, jans_obj)
                 else:
                     self.logger.debug('POST obj {}', inum)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
+
+    def _clean_json(self, endpoint, json_obj):
+        if endpoint == '/jans-config-api/api/v1/openid/clients':
+            self._pop_if_not_str(json_obj, ['clientName', 'logoUri', 'clientUri', 'policyUri', 'tosUri'])
+
+    def _pop_if_not_str(self, json_obj, attr_list):
+        for key in attr_list:
+            value = "" if isinstance(json_obj.get(key), str) else json_obj.pop(key, None)
 
 ############################
 ### Attribute operations ###
