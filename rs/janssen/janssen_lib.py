@@ -38,7 +38,7 @@ class ConfigAPIClient:
             'scope': scopes
         }
         acc_token = self.oidc_client.request_to_token_endpoint(b64_creds, params).get('access_token')
-        self.logger.trace('acc_token is {}')
+        self.logger.trace('acc_token is {}', acc_token)
         self.logger.trace('setting headers for operation')
         headers = {
             'Authorization': 'Bearer {}'.format(acc_token),
@@ -76,7 +76,7 @@ class ConfigAPIClient:
     def import_attributes(self, objects_folder):
         self.logger.debug('Import attributes from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/attributes'
-        scopes = 'https://jans.io/oauth/config/attributes.readonly, https://jans.io/oauth/config/attributes.write'
+        scopes = 'https://jans.io/oauth/config/attributes.readonly https://jans.io/oauth/config/attributes.write'
         for file_path in self._get_files_path(objects_folder):
             self.logger.debug('Processing file: {}', file_path)
             with open(file_path) as json_file:
