@@ -9,7 +9,6 @@
 import json
 import requests
 import os
-from pyDes import *
 from rs.utils.clients import OIDCClient
 from rs.utils import http
 from pathlib import Path
