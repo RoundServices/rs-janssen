@@ -61,7 +61,7 @@ class ConfigAPIClient:
                 file_name = Path(file_path).stem
                 temp_file = '{}/{}'.format(self.temp_dir,os.path.basename(file_name))
                 shutil.copyfile(file_path, temp_file)
-                self.local_properties.replace(temp_file)
+                self.properties.replace(temp_file)
                 files.append(temp_file)
         return files
 
