@@ -93,7 +93,6 @@ class ConfigAPIClient:
                 elif size_search_result_list == 1:
                     self.logger.debug('PUT attribute {}', name)
                     entry = search_result_list[0]
-                    endpoint = '{}/{}'.format(endpoint, entry.get('inum'))
                     entry.update(json_data)
                     self._execute_with_json_response('PUT', endpoint, scopes, entry)
                 else:
