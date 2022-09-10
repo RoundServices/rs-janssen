@@ -51,8 +51,7 @@ class ConfigAPIClient:
         response = requests.request(operation, url, headers=headers, data=body, verify=False)
         http.validate_response(response, self.logger, 'Execute Failed - HTTP Code: {}'.format(response.status_code))
         json_obj = {} if operation == 'DELETE' else response.json()
-        if operation != 'GET' and endpoint != '/jans-config-api/api/v1/attributes':
-            self.logger.debug('{} JSON response - {}', operation, json_obj)
+        self.logger.debug('{} JSON response - {}', operation, json_obj)
         return json_obj
 
     def _get_files_path(self, objects_folder, extension='.json'):
@@ -84,7 +83,8 @@ class ConfigAPIClient:
             with open(file_path) as json_file:
                 json_data = self._load_json(json_file)
                 name = json_data.get('name')
-                attributes_list = self._execute_with_json_response('GET', endpoint, scopes).get('data')
+                query_endpoint = '{}?pattern={}'.format(endpoint,name)
+                attributes_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
                 search_result_list = [ x for x in attributes_list if x.get('name') == name]
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
