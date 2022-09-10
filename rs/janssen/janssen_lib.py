@@ -97,7 +97,8 @@ class ConfigAPIClient:
                     entry.update(json_data)
                     self._execute_with_json_response('PUT', endpoint, scopes, entry)
                 else:
-                    error_msg = 'attribute {} is duplicated on Jans, entries on system: {}'.format(json_data, search_result_list)
+                    dns_search_result_list = [x.get('inum') for x in search_result_list]
+                    error_msg = 'attribute {} is duplicated on Jans, entries on system: {}'.format(name, dns_search_result_list)
                     self.logger.error(error_msg)
                     raise ValueError(error_msg)
 
