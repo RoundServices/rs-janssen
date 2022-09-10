@@ -47,7 +47,7 @@ class ConfigAPIClient:
         self.logger.trace('request body - dump json_obj')
         body = json.dumps(json_obj)
         self.logger.trace('execute http request')
-        response = requests.request(operation, url, headers=headers, data=body)
+        response = requests.request(operation, url, headers=headers, data=body, verify=False)
         http.validate_response(response, self.logger, 'Execute Failed - HTTP Code: {}'.format(response.status_code))
         json_obj = {} if operation == 'DELETE' else response.json()
         self.logger.debug('{} JSON response - {}', operation, json_obj)
@@ -58,8 +58,7 @@ class ConfigAPIClient:
         for directory_entry in sorted(os.scandir(objects_folder), key=lambda path: path.name):
             file_path = directory_entry.path
             if directory_entry.is_file() and file_path.endswith(extension):
-                file_name = Path(file_path).stem
-                temp_file = '{}/{}'.format(self.temp_dir,os.path.basename(file_name))
+                temp_file = '{}/{}'.format(self.temp_dir,os.path.basename(file_path))
                 shutil.copyfile(file_path, temp_file)
                 self.properties.replace(temp_file)
                 files.append(temp_file)
