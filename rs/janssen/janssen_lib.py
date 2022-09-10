@@ -70,6 +70,64 @@ class ConfigAPIClient:
         self.logger.trace('JSON definition: {}', json_data)
         return json_data
 
+    def _patch_objs(self, endpoint, scopes, objects_folder, inum_patch=True):
+        for file_path in self._get_files_path(objects_folder):
+            self.logger.debug('Processing file: {}', file_path)
+            with open(file_path) as json_file:
+                json_data = self._load_json(json_file)
+                inum = Path(file_path).stem
+                endpoint = '{}/{}'.format(endpoint, inum) if inum_patch else endpoint
+                self._execute_with_json_response('PATCH', endpoint, scopes, json_data)
+
+    def _import_obj_by_name(self, endpoint, scopes, objects_folder):
+        for file_path in self._get_files_path(objects_folder):
+            self.logger.debug('Processing file: {}', file_path)
+            with open(file_path) as json_file:
+                json_data = self._load_json(json_file)
+                name = json_data.get('name')
+                query_endpoint = '{}?pattern={}'.format(endpoint,name)
+                query_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
+                search_result_list = [] if query_list is None else [ x for x in query_list if x.get('name') == name]
+                size_search_result_list = len(search_result_list)
+                if size_search_result_list == 0:
+                    self.logger.debug('POST obj {}', name)
+                    self._execute_with_json_response('POST', endpoint, scopes, json_data)
+                elif size_search_result_list == 1:
+                    self.logger.debug('PUT obj {}', name)
+                    entry = search_result_list[0]
+                    entry.update(json_data)
+                    self._execute_with_json_response('PUT', endpoint, scopes, entry)
+                else:
+                    dns_search_result_list = [x.get('inum') for x in search_result_list]
+                    error_msg = 'obj with name {} is duplicated on Jans, entries on system: {}'.format(name, dns_search_result_list)
+                    self.logger.error(error_msg)
+                    raise ValueError(error_msg)
+
+    def _import_obj_by_inum(self, endpoint, scopes, objects_folder):
+        for file_path in self._get_files_path(objects_folder):
+            self.logger.debug('Processing file: {}', file_path)
+            with open(file_path) as json_file:
+                json_data = self._load_json(json_file)
+                inum = json_data.get('inum')
+                query_endpoint = '{}/{}'.format(endpoint, inum)
+                if endpoint == '/jans-config-api/api/v1/config/scripts':
+                    self.logger.debug('loading script code into json object')
+                    code_file_path = '{}/{}.py'.format(objects_folder, Path(file_path).stem)
+                    with open(code_file_path) as code_file:
+                        json_data['script'] = code_file.read()
+                jans_obj = {}
+                try:
+                    jans_obj = self._execute_with_json_response('GET', query_endpoint, scopes)
+                except:
+                    self.logger.debug("object {} not present in jans", inum)
+                if jans_obj != {}:
+                    self.logger.debug('PUT obj {}', inum)
+                    jans_obj.update(json_data)
+                    self._execute_with_json_response('PUT', endpoint, scopes, jans_obj)
+                else:
+                    self.logger.debug('POST obj {}', inum)
+                    self._execute_with_json_response('POST', endpoint, scopes, json_data)
+
 ############################
 ### Attribute operations ###
 ############################
@@ -78,39 +136,26 @@ class ConfigAPIClient:
         self.logger.debug('Import attributes from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/attributes'
         scopes = 'https://jans.io/oauth/config/attributes.readonly https://jans.io/oauth/config/attributes.write'
-        for file_path in self._get_files_path(objects_folder):
-            self.logger.debug('Processing file: {}', file_path)
-            with open(file_path) as json_file:
-                json_data = self._load_json(json_file)
-                name = json_data.get('name')
-                query_endpoint = '{}?pattern={}'.format(endpoint,name)
-                attributes_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
-                search_result_list = [] if attributes_list is None else [ x for x in attributes_list if x.get('name') == name]
-                size_search_result_list = len(search_result_list)
-                if size_search_result_list == 0:
-                    self.logger.debug('POST attribute {}', name)
-                    self._execute_with_json_response('POST', endpoint, scopes, json_data)
-                elif size_search_result_list == 1:
-                    self.logger.debug('PUT attribute {}', name)
-                    entry = search_result_list[0]
-                    entry.update(json_data)
-                    self._execute_with_json_response('PUT', endpoint, scopes, entry)
-                else:
-                    dns_search_result_list = [x.get('inum') for x in search_result_list]
-                    error_msg = 'attribute {} is duplicated on Jans, entries on system: {}'.format(name, dns_search_result_list)
-                    self.logger.error(error_msg)
-                    raise ValueError(error_msg)
+        self._import_obj_by_name(endpoint, scopes, objects_folder)
 
     def patch_attributes(self, objects_folder):
         self.logger.debug('Patch attributes from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/attributes'
-        scopes = 'https://jans.io/oauth/config/attributes.readonly, https://jans.io/oauth/config/attributes.write'
-        for file_path in self._get_files_path(objects_folder):
-            self.logger.debug('Processing file: {}', file_path)
-            with open(file_path) as json_file:
-                json_data = self._load_json(json_file)
-                inum = Path(file_path).stem
-                endpoint = '{}/{}'.format(endpoint, inum)
-                self._execute_with_json_response('PATCH', endpoint, scopes, json_data)
+        scopes = 'https://jans.io/oauth/config/attributes.readonly https://jans.io/oauth/config/attributes.write'
+        self._patch_objs(endpoint, scopes, objects_folder)
 
+############################
+### Client operations    ###
+############################
 
+    def import_clients(self, objects_folder):
+        self.logger.debug('Import clients from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/openid/clients'
+        scopes = 'https://jans.io/oauth/config/openid/clients.readonly https://jans.io/oauth/config/openid/clients.write'
+        self._import_obj_by_inum(endpoint, scopes, objects_folder)
+
+    def patch_clients(self, objects_folder):
+        self.logger.debug('Patch clients from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/openid/clients'
+        scopes = 'https://jans.io/oauth/config/openid/clients.readonly https://jans.io/oauth/config/openid/clients.write'
+        self._patch_objs(endpoint, scopes, objects_folder)
