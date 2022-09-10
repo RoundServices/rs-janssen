@@ -7,70 +7,102 @@
 #
 
 import json
-import base64
+import requests
+import os
 from pyDes import *
 from rs.utils.clients import OIDCClient
-from os import listdir
-from os.path import isfile, join, isdir
-from rs.utils import validators
-from rs.utils.basics import Logger
 from rs.utils import http
-from rs.utils import os_cmd
+from pathlib import Path
+
 
 class ConfigAPIClient:
-    """
-    ConfigAPIClient simplifies functionality for Janssen config-api interaction
-    """
 
-    def __init__(self, idp_base_url, b64_client_credentials, logger=Logger("ConfigAPIClient.py")):
-        """
-        Params
-        :param idp_base_url: for instance "https://jans.myorg.com"
-        :param b64_client_credentials: 'client_id:client_secret' in base64 encoded format
-        :param logger: RoundServices log. If None, default will be created
-        """
-        self.idp_base_url = idp_base_url
+    def __init__(self, logger, local_properties):
         self.logger = logger
-        self.oidc_client = OIDCClient(idp_base_url, b64_client_credentials, logger, verify=True)
+        self.properties = local_properties
+        self.base_uri = 'https://{}'.format(self.properties.get('idp_hostname'))
+        self.oidc_client = OIDCClient(self, self.base_uri, logger)
 
-    def create(self, endpoint, json_obj):
-        """
-        CREATE object
-        :param endpoint: from Jans config-api for instance attributes, clients, configuration/scripts
-        :param json_obj: dict that represents object to be created
-        :return: dict that represents created json obj
-        """
-        return self.oidc_client.post(endpoint, json_obj)
-
-    def delete(self, endpoint, json_obj):
-        """
-        DELETE object
-        :param endpoint: from Jans config-api for instance attributes, clients, configuration/scripts
-        :param json_obj: dict that represents object to be deleted with inum
-        :return: dict. json_obj from input
-        """
-        self.oidc_client.delete("{}/{}".format(endpoint, json_obj['inum']))
+    def _execute_with_json_response(self, operation, endpoint, scopes, json_obj={}):
+        self.logger.debug('{} {}', operation, endpoint)
+        url = '{}{}'.format(self.base_uri, endpoint)
+        self.logger.trace('Getting acc_token for operation')
+        client_id = self.properties.get('configapi_client_id')
+        client_secret = self.properties.get('configapi_client_secret')
+        b64_creds = http.to_base64_creds(client_id, client_secret)
+        params = {
+            'grant_type': 'client_credentials',
+            'scope': scopes
+        }
+        acc_token = self.oidc_client.request_to_token_endpoint(b64_creds, params).get('access_token')
+        self.logger.trace('acc_token is {}')
+        self.logger.trace('setting headers for operation')
+        headers = {
+            'Authorization': 'Bearer {}'.format(acc_token),
+            'Content-Type': 'application/json'
+        }
+        self.logger.trace('request body - dump json_obj')
+        body = json.dumps(json_obj)
+        self.logger.trace('execute http request')
+        response = requests.request(operation, url, headers=headers, data=body)
+        http.validate_response(response, self.logger, 'Execute Failed - HTTP Code: {}'.format(response.status_code))
+        json_obj = {} if operation == 'DELETE' else response.json()
+        self.logger.debug('{} JSON response - {}', operation, json_obj)
         return json_obj
 
-########################################################################################################################
-########## FUNCTIONS ###################################################################################################
-########################################################################################################################
+    def _get_files_path(self, objects_folder, extension='.json'):
+        files = list()
+        for directory_entry in sorted(os.scandir(objects_folder), key=lambda path: path.name):
+            file_path = directory_entry.path
+            if directory_entry.is_file() and file_path.endswith(extension):
+                files.append(file_path)
+        return files
 
-def rs_import_clients(self, objects_folder, temp_file):
-    self.logger.debug("Importing clients from: {}", objects_folder)
-    for directory_entry in sorted(os.scandir(objects_folder), key=lambda path: path.name):
-        if directory_entry.is_file() and directory_entry.path.endswith(".json"):
-            self.logger.debug("Processing file: {}", directory_entry.path)
-            shutil.copyfile(directory_entry.path, temp_file)
-            self.local_properties.replace(temp_file)
-            with open(temp_file) as json_file:
-                json_data = json.load(json_file)
-                self.logger.trace("Client definition: {}", json_data)
-                client_id = json_data["clientId"]
-                if self.rs_client_exists(client_id):
-                    client_keycloak_id = self.rs_get_client_keycloakid(client_id)
-                    self.logger.debug("Client '{}' already exists with internal id: {}. Updating...", client_id, client_keycloak_id)
-                    self.update_client(client_keycloak_id, json_data)
+    def _load_json(self, json_file):
+        json_data = json.load(json_file)
+        json_data = self.properties.replace_dict(json_data)
+        self.logger.trace('JSON definition: {}', json_data)
+        return json_data
+
+############################
+### Attribute operations ###
+############################
+
+    def import_attributes(self, objects_folder):
+        self.logger.debug('Import attributes from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/attributes'
+        scopes = 'https://jans.io/oauth/config/attributes.readonly, https://jans.io/oauth/config/attributes.write'
+        for file_path in self._get_files_path(objects_folder):
+            self.logger.debug('Processing file: {}', file_path)
+            with open(file_path) as json_file:
+                json_data = self._load_json(json_file)
+                name = json_data.get('name')
+                attributes_list = self._execute_with_json_response('GET', endpoint, scopes).get('data')
+                search_result_list = [ x for x in attributes_list if x.get('name') == name]
+                size_search_result_list = len(search_result_list)
+                if size_search_result_list == 0:
+                    self.logger.debug('Create attribute {}', name)
+                    self._execute_with_json_response('POST', endpoint, scopes, json_data)
+                elif size_search_result_list == 1:
+                    entry = search_result_list[0]
+                    endpoint = '{}/{}'.format(endpoint, entry.get('inum'))
+                    entry.update(json_data)
+                    self._execute_with_json_response('PUT', endpoint, scopes, entry)
                 else:
-                    self.logger.debug("Client '{}' does not exist. Creating...", client_id)
-                    self.create_client(json_data, skip_exists=True)
+                    error_msg = 'attribute {} is duplicated on Jans, entries on system: {}'.format(json_data, search_result_list)
+                    self.logger.error(error_msg)
+                    raise ValueError(error_msg)
+
+    def patch_attributes(self, objects_folder):
+        self.logger.debug('Patch attributes from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/attributes'
+        scopes = 'https://jans.io/oauth/config/attributes.readonly, https://jans.io/oauth/config/attributes.write'
+        for file_path in self._get_files_path(objects_folder):
+            self.logger.debug('Processing file: {}', file_path)
+            with open(file_path) as json_file:
+                json_data = self._load_json(json_file)
+                inum = Path(file_path).stem
+                endpoint = '{}/{}'.format(endpoint, inum)
+                self._execute_with_json_response('PATCH', endpoint, scopes, json_data)
+
+
