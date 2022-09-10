@@ -123,6 +123,7 @@ class ConfigAPIClient:
                 if jans_obj != {}:
                     self.logger.debug('PUT obj {}', inum)
                     jans_obj.update(json_data)
+                    self.logger.debug("json obj is: {}", jans_obj)
                     self._execute_with_json_response('PUT', endpoint, scopes, jans_obj)
                 else:
                     self.logger.debug('POST obj {}', inum)
