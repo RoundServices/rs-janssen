@@ -85,7 +85,7 @@ class ConfigAPIClient:
                 name = json_data.get('name')
                 query_endpoint = '{}?pattern={}'.format(endpoint,name)
                 attributes_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
-                search_result_list = [ x for x in attributes_list if x.get('name') == name]
+                search_result_list = [] if attributes_list is None else [ x for x in attributes_list if x.get('name') == name]
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
                     self.logger.debug('POST attribute {}', name)
