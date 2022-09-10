@@ -87,9 +87,10 @@ class ConfigAPIClient:
                 search_result_list = [ x for x in attributes_list if x.get('name') == name]
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
-                    self.logger.debug('Create attribute {}', name)
+                    self.logger.debug('POST attribute {}', name)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
                 elif size_search_result_list == 1:
+                    self.logger.debug('PUT attribute {}', name)
                     entry = search_result_list[0]
                     endpoint = '{}/{}'.format(endpoint, entry.get('inum'))
                     entry.update(json_data)
