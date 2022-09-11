@@ -81,7 +81,9 @@ class ConfigAPIClient:
 
     def _query_by_pattern(self, endpoint, scopes, key, key_val):
         query_endpoint = '{}?pattern={}'.format(endpoint,key_val)
-        query_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
+        query_list = self._execute_with_json_response('GET', query_endpoint, scopes)
+        if query_list.get('data'):
+            query_list = query_list.get('data')
         search_result_list = [] if query_list is None else [ x for x in query_list if x.get(key) == key_val]
         return search_result_list
 
