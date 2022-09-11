@@ -144,9 +144,9 @@ class ConfigAPIClient:
                 id_scopes = [x for x in client_scopes if not x.startswith("inum=")]
                 #If scope id does not exist, must stop the whole operation
                 for id_scope in id_scopes:
-                    search_result_list = self._query_by_pattern(endpoint, scopes, 'id', id_scope)
+                    search_result_list = self._query_by_pattern('/jans-config-api/api/v1/scopes', scopes, 'id', id_scope)
                     self.logger.trace("replacing scope id {} ", id_scope)
-                    inum = search_result_list[0].get('inum')
+                    inum = search_result_list[0].get('dn')
                     client_scopes.append(inum)
                     client_scopes.remove(id_scope)
                     self.logger.trace("replaced with scope inum {} ", inum)
