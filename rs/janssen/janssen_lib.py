@@ -116,7 +116,7 @@ class ConfigAPIClient:
                 json_data = self._load_json(json_file)
                 inum = json_data.get('inum')
                 query_endpoint = '{}/{}'.format(endpoint, inum)
-                json_data = self._customize_for_endpoint(endpoint, scopes, objects_folder, file_path, json_data)
+                json_data = self._customize_for_endpoint(endpoint, objects_folder, file_path, json_data)
                 jans_obj = {}
                 try:
                     jans_obj = self._execute_with_json_response('GET', query_endpoint, scopes)
@@ -131,7 +131,7 @@ class ConfigAPIClient:
                     self.logger.debug('POST obj {}', inum)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
 
-    def _customize_for_endpoint(self, endpoint, scopes, objects_folder, file_path, json_data):
+    def _customize_for_endpoint(self, endpoint, objects_folder, file_path, json_data):
         if endpoint == '/jans-config-api/api/v1/config/scripts':
             self.logger.debug('loading script code into json object')
             code_file_path = '{}/{}.py'.format(objects_folder, Path(file_path).stem)
@@ -144,7 +144,7 @@ class ConfigAPIClient:
                 id_scopes = [x for x in client_scopes if not x.startswith("inum=")]
                 #If scope id does not exist, must stop the whole operation
                 for id_scope in id_scopes:
-                    search_result_list = self._query_by_pattern('/jans-config-api/api/v1/scopes', scopes, 'id', id_scope)
+                    search_result_list = self._query_by_pattern('/jans-config-api/api/v1/scopes', 'https://jans.io/oauth/config/scopes.readonly', 'id', id_scope)
                     self.logger.trace("replacing scope id {} ", id_scope)
                     inum = search_result_list[0].get('dn')
                     client_scopes.append(inum)
