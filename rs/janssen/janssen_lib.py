@@ -79,27 +79,31 @@ class ConfigAPIClient:
                 endpoint = '{}/{}'.format(endpoint, inum) if inum_patch else endpoint
                 self._execute_with_json_response('PATCH', endpoint, scopes, json_data)
 
-    def _import_obj_by_name(self, endpoint, scopes, objects_folder):
+    def _search_by_pattern(self, json_data, endpoint, key, scopes):
+        key_val = json_data.get(key)
+        query_endpoint = '{}?pattern={}'.format(endpoint,key_val)
+        query_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
+        search_result_list = [] if query_list is None else [ x for x in query_list if x.get(key) == key_val]
+        return search_result_list
+
+    def _import_obj_by_key(self, endpoint, scopes, objects_folder, key='name'):
         for file_path in self._get_files_path(objects_folder):
             self.logger.debug('Processing file: {}', file_path)
             with open(file_path) as json_file:
                 json_data = self._load_json(json_file)
-                name = json_data.get('name')
-                query_endpoint = '{}?pattern={}'.format(endpoint,name)
-                query_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
-                search_result_list = [] if query_list is None else [ x for x in query_list if x.get('name') == name]
+                search_result_list = self._search_by_pattern(json_data, endpoint, key, scopes)
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
-                    self.logger.debug('POST obj {}', name)
+                    self.logger.debug('POST obj {}', key_val)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
                 elif size_search_result_list == 1:
-                    self.logger.debug('PUT obj {}', name)
+                    self.logger.debug('PUT obj {}', key_val)
                     entry = search_result_list[0]
                     entry.update(json_data)
                     self._execute_with_json_response('PUT', endpoint, scopes, entry)
                 else:
                     dns_search_result_list = [x.get('inum') for x in search_result_list]
-                    error_msg = 'obj with name {} is duplicated on Jans, entries on system: {}'.format(name, dns_search_result_list)
+                    error_msg = 'obj with {} {} is duplicated on Jans, entries on system: {}'.format(key, key_val, dns_search_result_list)
                     self.logger.error(error_msg)
                     raise ValueError(error_msg)
 
@@ -131,6 +135,18 @@ class ConfigAPIClient:
             code_file_path = '{}/{}.py'.format(objects_folder, Path(file_path).stem)
             with open(code_file_path) as code_file:
                 json_data['script'] = code_file.read()
+        if endpoint == '/jans-config-api/api/v1/openid/clients':
+            self.logger.debug('loading scopes inum on client')
+            scopes = json_data.get('scopes')
+            if scopes:
+                id_scopes = [x for x in scopes if not x.startswith("inum=")]
+                #If scope id does not exist, must stop the whole operation
+                for scope in id_scopes:
+                    search_result_list = self._search_by_pattern(json_data, endpoint, 'id', scopes)
+                    inum = search_result_list[0].get('inum')
+                    self.logger.trace("replacing scope id {} for scope inum {} ", inum, scope)
+                    scopes.append(inum)
+                    scopes.remove(scope)
         return json_data
 
     def _clean_json(self, endpoint, json_obj):
@@ -142,14 +158,19 @@ class ConfigAPIClient:
             value = "" if isinstance(json_obj.get(key), str) else json_obj.pop(key, None)
 
 ############################
-### Attribute operations ###
+# Attribute operations
+#
+# name attr value must be included on displayName value
+# Gluu searchs entries by displayName/description substring.
+# If there is more than one valid value for displayName
+# Always take the obj which name attr is equal to the json file value.
 ############################
 
     def import_attributes(self, objects_folder):
         self.logger.debug('Import attributes from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/attributes'
         scopes = 'https://jans.io/oauth/config/attributes.readonly https://jans.io/oauth/config/attributes.write'
-        self._import_obj_by_name(endpoint, scopes, objects_folder)
+        self._import_obj_by_key(endpoint, scopes, objects_folder)
 
     def patch_attributes(self, objects_folder):
         self.logger.debug('Patch attributes from {}', objects_folder)
@@ -158,7 +179,10 @@ class ConfigAPIClient:
         self._patch_objs(endpoint, scopes, objects_folder)
 
 ############################
-### Client operations    ###
+# Client operations
+#
+# requires inum attr defined on the json file
+# scopes can be a valid inum, or the scope id value (this value also must be defined on scope displayName definition)
 ############################
 
     def import_clients(self, objects_folder):
