@@ -114,7 +114,7 @@ class ConfigAPIClient:
                 json_data = self._load_json(json_file)
                 inum = json_data.get('inum')
                 query_endpoint = '{}/{}'.format(endpoint, inum)
-                json_data = self._customize_for_endpoint(endpoint, objects_folder, file_path, json_data)
+                json_data = self._customize_for_endpoint(endpoint, scopes, objects_folder, file_path, json_data)
                 jans_obj = {}
                 try:
                     jans_obj = self._execute_with_json_response('GET', query_endpoint, scopes)
@@ -129,7 +129,7 @@ class ConfigAPIClient:
                     self.logger.debug('POST obj {}', inum)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
 
-    def _customize_for_endpoint(self, endpoint, objects_folder, file_path, json_data, scopes):
+    def _customize_for_endpoint(self, endpoint, scopes, objects_folder, file_path, json_data):
         if endpoint == '/jans-config-api/api/v1/config/scripts':
             self.logger.debug('loading script code into json object')
             code_file_path = '{}/{}.py'.format(objects_folder, Path(file_path).stem)
