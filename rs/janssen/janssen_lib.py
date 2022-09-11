@@ -145,10 +145,11 @@ class ConfigAPIClient:
                 #If scope id does not exist, must stop the whole operation
                 for id_scope in id_scopes:
                     search_result_list = self._query_by_pattern(endpoint, scopes, 'id', id_scope)
+                    self.logger.trace("replacing scope id {} ", id_scope)
                     inum = search_result_list[0].get('inum')
-                    self.logger.trace("replacing scope id {} for scope inum {} ", inum, id_scope)
                     client_scopes.append(inum)
                     client_scopes.remove(id_scope)
+                    self.logger.trace("replaced with scope inum {} ", inum)
         return json_data
 
     def _clean_json(self, endpoint, json_obj):
