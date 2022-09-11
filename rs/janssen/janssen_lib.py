@@ -143,7 +143,7 @@ class ConfigAPIClient:
                 id_scopes = [x for x in scopes if not x.startswith("inum=")]
                 #If scope id does not exist, must stop the whole operation
                 for scope in id_scopes:
-                    search_result_list = self._search_by_pattern(json_data, endpoint, 'id', scopes)
+                    search_result_list = self._search_by_pattern(json_data, endpoint, 'id', scope)
                     inum = search_result_list[0].get('inum')
                     self.logger.trace("replacing scope id {} for scope inum {} ", inum, scope)
                     scopes.append(inum)
