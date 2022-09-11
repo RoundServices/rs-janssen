@@ -91,6 +91,7 @@ class ConfigAPIClient:
             self.logger.debug('Processing file: {}', file_path)
             with open(file_path) as json_file:
                 json_data = self._load_json(json_file)
+                key_val = json_data.get(key)
                 search_result_list = self._search_by_pattern(json_data, endpoint, key, scopes)
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
