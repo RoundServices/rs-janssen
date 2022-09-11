@@ -79,8 +79,7 @@ class ConfigAPIClient:
                 endpoint = '{}/{}'.format(endpoint, inum) if inum_patch else endpoint
                 self._execute_with_json_response('PATCH', endpoint, scopes, json_data)
 
-    def _search_by_pattern(self, json_data, endpoint, key, scopes):
-        key_val = json_data.get(key)
+    def _query_by_pattern(self, endpoint, scopes, key, key_val):
         query_endpoint = '{}?pattern={}'.format(endpoint,key_val)
         query_list = self._execute_with_json_response('GET', query_endpoint, scopes).get('data')
         search_result_list = [] if query_list is None else [ x for x in query_list if x.get(key) == key_val]
@@ -92,7 +91,7 @@ class ConfigAPIClient:
             with open(file_path) as json_file:
                 json_data = self._load_json(json_file)
                 key_val = json_data.get(key)
-                search_result_list = self._search_by_pattern(json_data, endpoint, key, scopes)
+                search_result_list = self._query_by_pattern(endpoint, scopes, key, key_val)
                 size_search_result_list = len(search_result_list)
                 if size_search_result_list == 0:
                     self.logger.debug('POST obj {}', key_val)
@@ -130,7 +129,7 @@ class ConfigAPIClient:
                     self.logger.debug('POST obj {}', inum)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
 
-    def _customize_for_endpoint(self, endpoint, objects_folder, file_path, json_data):
+    def _customize_for_endpoint(self, endpoint, objects_folder, file_path, json_data, scopes):
         if endpoint == '/jans-config-api/api/v1/config/scripts':
             self.logger.debug('loading script code into json object')
             code_file_path = '{}/{}.py'.format(objects_folder, Path(file_path).stem)
@@ -138,16 +137,16 @@ class ConfigAPIClient:
                 json_data['script'] = code_file.read()
         if endpoint == '/jans-config-api/api/v1/openid/clients':
             self.logger.debug('loading scopes inum on client')
-            scopes = json_data.get('scopes')
-            if scopes:
-                id_scopes = [x for x in scopes if not x.startswith("inum=")]
+            client_scopes = json_data.get('scopes')
+            if client_scopes:
+                id_scopes = [x for x in client_scopes if not x.startswith("inum=")]
                 #If scope id does not exist, must stop the whole operation
-                for scope in id_scopes:
-                    search_result_list = self._search_by_pattern(json_data, endpoint, 'id', scope)
+                for id_scope in id_scopes:
+                    search_result_list = self._query_by_pattern(endpoint, scopes, 'id', id_scope)
                     inum = search_result_list[0].get('inum')
-                    self.logger.trace("replacing scope id {} for scope inum {} ", inum, scope)
-                    scopes.append(inum)
-                    scopes.remove(scope)
+                    self.logger.trace("replacing scope id {} for scope inum {} ", inum, id_scope)
+                    client_scopes.append(inum)
+                    client_scopes.remove(id_scope)
         return json_data
 
     def _clean_json(self, endpoint, json_obj):
