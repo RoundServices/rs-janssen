@@ -182,6 +182,27 @@ class ConfigAPIClient:
         self._patch_objs(endpoint, scopes, objects_folder)
 
 ############################
+# scopes operations
+#
+# id attr value must be included on displayName value
+# Gluu searchs entries by displayName/description substring.
+# If there is more than one valid value for displayName
+# Always take the obj which name attr is equal to the json file value.
+############################
+
+    def import_scopes(self, objects_folder):
+        self.logger.debug('Import scopes from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/scopes'
+        scopes = 'https://jans.io/oauth/config/scopes.write https://jans.io/oauth/config/scopes.readonly'
+        self._import_obj_by_key(endpoint, scopes, objects_folder, 'id')
+
+    def patch_scopes(self, objects_folder):
+        self.logger.debug('Patch scopes from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/scopes'
+        scopes = 'https://jans.io/oauth/config/scopes.write https://jans.io/oauth/config/scopes.readonly'
+        self._patch_objs(endpoint, scopes, objects_folder)
+
+############################
 # Client operations
 #
 # requires inum attr defined on the json file
