@@ -115,7 +115,7 @@ class ConfigAPIClient:
             with open(file_path) as json_file:
                 json_data = self._load_json(json_file)
                 inum = json_data.get('inum')
-                query_endpoint = '{}/{}'.format(endpoint, inum)
+                query_endpoint = self._build_query_endpoint(endpoint, inum)
                 json_data = self._customize_for_endpoint(endpoint, objects_folder, file_path, json_data)
                 jans_obj = {}
                 try:
@@ -130,6 +130,13 @@ class ConfigAPIClient:
                 else:
                     self.logger.debug('POST obj {}', inum)
                     self._execute_with_json_response('POST', endpoint, scopes, json_data)
+
+    def _build_query_endpoint(self, endpoint, inum):
+        if endpoint == '/jans-config-api/api/v1/config/scripts':
+            query_endpoint = '{}/inum/{}'.format(endpoint, inum)
+        else:
+            query_endpoint = '{}/{}'.format(endpoint, inum)
+        return query_endpoint
 
     def _customize_for_endpoint(self, endpoint, objects_folder, file_path, json_data):
         if endpoint == '/jans-config-api/api/v1/config/scripts':
