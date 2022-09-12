@@ -226,6 +226,7 @@ class ConfigAPIClient:
 #
 # requires inum attr defined on the json file
 # inside the import folder must be 2 files with same name, the json definition and the python code (.py) file per script to import
+# script attr is not required on the json definition, it will be added during the import process
 # patch operation only requires the json file with patch specification
 ############################
 
@@ -240,3 +241,15 @@ class ConfigAPIClient:
         endpoint = '/jans-config-api/api/v1/config/scripts'
         scopes = 'https://jans.io/oauth/config/scripts.readonly https://jans.io/oauth/config/scripts.write'
         self._patch_objs(endpoint, scopes, objects_folder)
+
+############################
+# jans-auth-server/config
+#
+# patch config from jans-auth-server
+############################
+
+    def patch_jans_auth_server_config(self, objects_folder):
+        self.logger.debug('Patch clients from {}', objects_folder)
+        endpoint = '/jans-config-api/api/v1/jans-auth-server/config'
+        scopes = 'https://jans.io/oauth/jans-auth-server/config/properties.readonly https://jans.io/oauth/jans-auth-server/config/properties.write'
+        self._patch_objs(endpoint, scopes, objects_folder, False)

@@ -19,12 +19,14 @@ def run(logger, local_properties):
     config_api_client.import_attributes("../customization/attributes")
     config_api_client.patch_attributes("../customization/attributes/patch")
 
-    # config_api_client.import_scripts("../customization/script-objects")
+    config_api_client.import_scripts("../customization/script-objects")
     config_api_client.patch_scripts("../customization/script-objects/patch")
 
     config_api_client.import_scopes("../customization/scopes")
 
     config_api_client.import_clients("../customization/clients")
+
+    config_api_client.patch_jans_auth_server_config("../customization/jans_auth_server")
 
 
 if __name__ == "__main__":
