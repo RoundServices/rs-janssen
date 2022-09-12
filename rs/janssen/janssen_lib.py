@@ -238,13 +238,13 @@ class ConfigAPIClient:
 ############################
 
     def import_scripts(self, objects_folder):
-        self.logger.debug('Import clients from {}', objects_folder)
+        self.logger.debug('Import Script from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/config/scripts'
         scopes = 'https://jans.io/oauth/config/scripts.readonly https://jans.io/oauth/config/scripts.write'
         self._import_obj_by_inum(endpoint, scopes, objects_folder)
 
     def patch_scripts(self, objects_folder):
-        self.logger.debug('Patch clients from {}', objects_folder)
+        self.logger.debug('Patch Script from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/config/scripts'
         scopes = 'https://jans.io/oauth/config/scripts.readonly https://jans.io/oauth/config/scripts.write'
         self._patch_objs(endpoint, scopes, objects_folder)
@@ -256,7 +256,19 @@ class ConfigAPIClient:
 ############################
 
     def patch_jans_auth_server_config(self, objects_folder):
-        self.logger.debug('Patch clients from {}', objects_folder)
+        self.logger.debug('Patch config from {}', objects_folder)
         endpoint = '/jans-config-api/api/v1/jans-auth-server/config'
         scopes = 'https://jans.io/oauth/jans-auth-server/config/properties.readonly https://jans.io/oauth/jans-auth-server/config/properties.write'
+        self._patch_objs(endpoint, scopes, objects_folder, False)
+
+############################
+# jans-config-api/scim/scim-config
+#
+# patch config from scim module
+############################
+
+    def patch_scim_config(self, objects_folder):
+        self.logger.debug('Patch scim from {}', objects_folder)
+        endpoint = '/jans-config-api/scim/scim-config'
+        scopes = 'https://jans.io/scim/config.readonly https://jans.io/scim/config.write'
         self._patch_objs(endpoint, scopes, objects_folder, False)
