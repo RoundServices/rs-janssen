@@ -1,10 +1,3 @@
 # rs-janssen
 
-## Pre-requisites
-- Python > 3.x
-- [rs-utils](https://github.com/RoundServices/rs-utils)
-
-## Deploy
-```sh
-python3 -m pip install --upgrade git+https://github.com/RoundServices/rs-janssen.git@main
-```
+This module is DEPRECATED. Code was migrated to https://github.com/identicum/sherpa-py-janssen/
